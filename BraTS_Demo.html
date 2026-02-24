@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BraTS-Africa Brain Tumor Analysis</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 25%, #0d1b2a 50%, #1a0a2e 75%, #0a0a0f 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: #e0e0e0;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(0, 212, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(123, 44, 191, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(255, 0, 128, 0.05) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .container, .header {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, rgba(10, 10, 20, 0.95) 0%, rgba(26, 26, 46, 0.95) 50%, rgba(13, 27, 42, 0.95) 100%);
+            padding: 40px 20px;
+            text-align: center;
+            border-bottom: 2px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+            box-shadow: 0 4px 30px rgba(0, 212, 255, 0.2), 0 0 60px rgba(123, 44, 191, 0.1);
+        }
+        
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00d4ff, #7b2cbf, #ff0080, #7b2cbf, #00d4ff, transparent);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            background: linear-gradient(90deg, #00d4ff, #00ff88, #7b2cbf, #ff0080, #00d4ff);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 4s ease infinite;
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+            margin-bottom: 10px;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+        
+        .header p {
+            color: #8892b0;
+            margin-top: 12px;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+        }
+
+        .header .subtitle {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 20px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 25px;
+            font-size: 0.9rem;
+            color: #00d4ff;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: linear-gradient(145deg, rgba(20, 20, 35, 0.9) 0%, rgba(30, 30, 50, 0.85) 100%);
+            border-radius: 20px;
+            padding: 28px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 212, 255, 0.15), 0 0 30px rgba(123, 44, 191, 0.1);
+            border-color: rgba(0, 212, 255, 0.4);
+        }
+        
+        .card h3 {
+            color: #00d4ff;
+            margin-bottom: 22px;
+            font-size: 1.4rem;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 12px;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+        
+        .stat-item {
+            background: linear-gradient(145deg, rgba(15, 15, 25, 0.8) 0%, rgba(25, 25, 40, 0.8) 100%);
+            padding: 22px 18px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .stat-item:hover {
+            background: linear-gradient(145deg, rgba(20, 20, 35, 0.9) 0%, rgba(35, 35, 55, 0.9) 100%);
+            border-color: rgba(0, 212, 255, 0.3);
+            transform: scale(1.02);
+        }
+
+        .stat-item:hover::before {
+            opacity: 1;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-label {
+            font-size: 0.85rem;
+            color: #8892b0;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        
+        .viz-card {
+            background: linear-gradient(145deg, rgba(20, 20, 35, 0.9) 0%, rgba(30, 30, 50, 0.85) 100%);
+            border-radius: 20px;
+            padding: 28px;
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .viz-card:hover {
+            border-color: rgba(0, 212, 255, 0.3);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 212, 255, 0.1);
+        }
+        
+        .viz-card h3 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .modality-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 18px;
+            margin-top: 20px;
+        }
+        
+        .modality-card {
+            background: linear-gradient(145deg, rgba(15, 15, 25, 0.8) 0%, rgba(25, 25, 40, 0.8) 100%);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-left: 4px solid #00d4ff;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .modality-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modality-card:hover {
+            transform: translateX(8px);
+            border-left-color: #00ff88;
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.2);
+        }
+        
+        .modality-card:hover::before {
+            opacity: 1;
+        }
+        
+        .modality-card h4 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+        
+        .modality-card p {
+            color: #8892b0;
+            font-size: 0.95rem;
+        }
+
+        .tumor-legend {
+            display: flex;
+            gap: 25px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 18px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .legend-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .legend-color {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            box-shadow: 0 0 15px currentColor;
+        }
+        
+        .legend-item span {
+            color: #b0b0c0;
+            font-size: 0.95rem;
+        }
+        
+        .chart-container {
+            height: 450px;
+            margin-top: 20px;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 25px;
+        }
+
+        .info-banner {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(123, 44, 191, 0.1) 100%);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px 25px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .info-banner .icon {
+            font-size: 2rem;
+        }
+
+        .info-banner .text {
+            flex: 1;
+        }
+
+        .info-banner h4 {
+            color: #00d4ff;
+            margin-bottom: 5px;
+        }
+
+        .info-banner p {
+            color: #8892b0;
+            font-size: 0.95rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            margin-top: 20px;
+            border-top: 1px solid rgba(0, 212, 255, 0.1);
+            color: #5a5a7a;
+            font-size: 0.9rem;
+        }
+
+        .footer a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧠 BraTS-Africa Brain Tumor Analysis</h1>
+        <p>Multi-modal MRI Dataset Visualization Dashboard</p>
+        <div class="subtitle">Sub-Saharan Africa Brain Tumor Segmentation Challenge</div>
+    </div>
+    
+    <div class="container">
+        <!-- Info Banner -->
+        <div class="info-banner">
+            <div class="icon">📊</div>
+            <div class="text">
+                <h4>BraTS-Africa Dataset Overview</h4>
+                <p>Comprehensive brain tumor MRI dataset featuring multi-modal imaging data from Sub-Saharan African patients for tumor segmentation research.</p>
+            </div>
+        </div>
+
+        <!-- Dataset Overview -->
+        <div class="dashboard">
+            <div class="card">
+                <h3>📈 Dataset Statistics</h3>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">95</div>
+                        <div class="stat-label">Glioma Cases</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">51</div>
+                        <div class="stat-label">Other Neoplasms</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">4</div>
+                        <div class="stat-label">MRI Modalities</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">146</div>
+                        <div class="stat-label">Total Cases</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🔬 MRI Modalities</h3>
+                <div class="modality-info">
+                    <div class="modality-card">
+                        <h4>T1</h4>
+                        <p>Native T1-weighted imaging</p>
+                    </div>
+                    <div class="modality-card">
+                        <h4>T1ce</h4>
+                        <p>Contrast-enhanced T1</p>
+                    </div>
+                    <div class="modality-card">
+                        <h4>T2</h4>
+                        <p>T2-weighted imaging</p>
+                    </div>
+                    <div class="modality-card">
+                        <h4>FLAIR</h4>
+                        <p>Fluid-attenuated IR</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-grid">
+            <!-- Dataset Distribution -->
+            <div class="viz-card">
+                <h3>📊 Tumor Type Distribution</h3>
+                <div id="distributionChart" class="chart-container"></div>
+            </div>
+
+            <!-- Volume Distribution Chart -->
+            <div class="viz-card">
+                <h3>📈 Tumor Volume Analysis</h3>
+                <div id="volumeChart" class="chart-container"></div>
+            </div>
+        </div>
+        
+        <!-- 3D Tumor Visualization -->
+        <div class="viz-card">
+            <h3>🎯 3D Tumor Segmentation Visualization</h3>
+            <div id="tumor3D" class="chart-container" style="height: 500px;"></div>
+            <div class="tumor-legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff4466; color: #ff4466;"></div>
+                    <span>Necrotic Core (NCR - Label 1)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #44ff88; color: #44ff88;"></div>
+                    <span>Peritumoral Edema (ED - Label 2)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4488ff; color: #4488ff;"></div>
+                    <span>Enhancing Tumor (ET - Label 4)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Segmentation Info -->
+        <div class="viz-card">
+            <h3>🏷️ Segmentation Labels</h3>
+            <div class="modality-info">
+                <div class="modality-card" style="border-left-color: #ff4466;">
+                    <h4 style="color: #ff4466;">NCR (Label 1)</h4>
+                    <p>Necrotic tumor core - central dead tissue region</p>
+                </div>
+                <div class="modality-card" style="border-left-color: #44ff88;">
+                    <h4 style="color: #44ff88;">ED (Label 2)</h4>
+                    <p>Peritumoral edematous/invaded tissue</p>
+                </div>
+                <div class="modality-card" style="border-left-color: #4488ff;">
+                    <h4 style="color: #4488ff;">ET (Label 4)</h4>
+                    <p>GD-enhancing tumor - active tumor region</p>
+                </div>
+                <div class="modality-card" style="border-left-color: #aaa;">
+                    <h4 style="color: #aaa;">Background (Label 0)</h4>
+                    <p>Healthy brain tissue and background</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>BraTS-Africa Brain Tumor Segmentation Challenge | Research Visualization Dashboard</p>
+            <p style="margin-top: 8px;">Data source: <a href="https://www.synapse.org/#!Synapse:syn27046444/wiki/616571" target="_blank">BraTS Challenge</a></p>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize visualizations on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            create3DTumorVisualization();
+            createVolumeChart();
+            createDistributionChart();
+        });
+        
+        function create3DTumorVisualization() {
+            // Generate sample 3D tumor data
+            const necroticCore = generateSpherePoints(60, 70, 40, 15);
+            const edema = generateSpherePoints(60, 70, 40, 35);
+            const enhancing = generateSpherePoints(65, 72, 42, 22);
+            
+            const data = [
+                {
+                    type: 'scatter3d',
+                    mode: 'markers',
+                    name: 'Peritumoral Edema (ED)',
+                    x: edema.x,
+                    y: edema.y,
+                    z: edema.z,
+                    marker: {
+                        size: 2.5,
+                        color: 'rgba(68, 255, 136, 0.25)',
+                        opacity: 0.25
+                    }
+                },
+                {
+                    type: 'scatter3d',
+                    mode: 'markers',
+                    name: 'Enhancing Tumor (ET)',
+                    x: enhancing.x,
+                    y: enhancing.y,
+                    z: enhancing.z,
+                    marker: {
+                        size: 2.5,
+                        color: 'rgba(68, 136, 255, 0.5)',
+                        opacity: 0.5
+                    }
+                },
+                {
+                    type: 'scatter3d',
+                    mode: 'markers',
+                    name: 'Necrotic Core (NCR)',
+                    x: necroticCore.x,
+                    y: necroticCore.y,
+                    z: necroticCore.z,
+                    marker: {
+                        size: 3,
+                        color: 'rgba(255, 68, 102, 0.8)',
+                        opacity: 0.8
+                    }
+                }
+            ];
+            
+            const layout = {
+                paper_bgcolor: 'rgba(15,15,25,1)',
+                plot_bgcolor: 'rgba(15,15,25,1)',
+                font: { color: '#8892b0', family: 'Segoe UI' },
+                scene: {
+                    xaxis: { 
+                        title: 'X (voxels)', 
+                        gridcolor: 'rgba(0,212,255,0.1)', 
+                        color: '#00d4ff', 
+                        tickcolor: '#00d4ff',
+                        zerolinecolor: 'rgba(0,212,255,0.2)'
+                    },
+                    yaxis: { 
+                        title: 'Y (voxels)', 
+                        gridcolor: 'rgba(123,44,191,0.1)', 
+                        color: '#7b2cbf', 
+                        tickcolor: '#7b2cbf',
+                        zerolinecolor: 'rgba(123,44,191,0.2)'
+                    },
+                    zaxis: { 
+                        title: 'Z (voxels)', 
+                        gridcolor: 'rgba(0,255,136,0.1)', 
+                        color: '#00ff88', 
+                        tickcolor: '#00ff88',
+                        zerolinecolor: 'rgba(0,255,136,0.2)'
+                    },
+                    bgcolor: 'rgba(15,15,25,1)',
+                    camera: {
+                        eye: { x: 1.5, y: 1.5, z: 1.2 }
+                    }
+                },
+                margin: { l: 0, r: 0, t: 40, b: 0 },
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(20,20,35,0.9)',
+                    bordercolor: 'rgba(0,212,255,0.2)',
+                    borderwidth: 1,
+                    font: { color: '#e0e0e0', size: 12 }
+                },
+                title: {
+                    text: 'Sample Tumor Segmentation',
+                    font: { color: '#00d4ff', size: 16 },
+                    y: 0.98
+                }
+            };
+            
+            Plotly.newPlot('tumor3D', data, layout, {responsive: true});
+        }
+        
+        function generateSpherePoints(cx, cy, cz, radius) {
+            const points = { x: [], y: [], z: [] };
+            const numPoints = 600;
+            
+            for (let i = 0; i < numPoints; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const r = radius * Math.cbrt(Math.random());
+                
+                points.x.push(cx + r * Math.sin(phi) * Math.cos(theta));
+                points.y.push(cy + r * Math.sin(phi) * Math.sin(theta));
+                points.z.push(cz + r * Math.cos(phi));
+            }
+            
+            return points;
+        }
+        
+        function createVolumeChart() {
+            const data = [{
+                values: [12.8, 67.9, 19.3],
+                labels: ['Necrotic Core', 'Peritumoral Edema', 'Enhancing Tumor'],
+                type: 'pie',
+                marker: {
+                    colors: ['#ff4466', '#44ff88', '#4488ff'],
+                    line: { color: 'rgba(0,0,0,0.4)', width: 2 }
+                },
+                textinfo: 'label+percent',
+                textfont: { color: '#fff', size: 13 },
+                hole: 0.45,
+                pull: [0.02, 0, 0.02]
+            }];
+            
+            const layout = {
+                paper_bgcolor: 'rgba(15,15,25,1)',
+                plot_bgcolor: 'rgba(15,15,25,1)',
+                font: { color: '#8892b0', family: 'Segoe UI' },
+                margin: { l: 30, r: 30, t: 50, b: 30 },
+                showlegend: true,
+                legend: {
+                    bgcolor: 'rgba(20,20,35,0.9)',
+                    bordercolor: 'rgba(0,212,255,0.2)',
+                    borderwidth: 1,
+                    font: { color: '#e0e0e0', size: 12 },
+                    orientation: 'h',
+                    y: -0.1
+                },
+                annotations: [{
+                    text: 'Avg.<br>Volume',
+                    font: { size: 16, color: '#00d4ff', family: 'Segoe UI' },
+                    showarrow: false
+                }],
+                title: {
+                    text: 'Average Tumor Component Distribution',
+                    font: { color: '#00d4ff', size: 16 },
+                    y: 0.95
+                }
+            };
+            
+            Plotly.newPlot('volumeChart', data, layout, {responsive: true});
+        }
+        
+        function createDistributionChart() {
+            const data = [{
+                x: ['Glioma', 'Other Neoplasms'],
+                y: [95, 51],
+                type: 'bar',
+                marker: {
+                    color: ['rgba(123, 44, 191, 0.85)', 'rgba(0, 212, 255, 0.85)'],
+                    line: {
+                        color: ['#7b2cbf', '#00d4ff'],
+                        width: 2
+                    }
+                },
+                text: ['95 cases (65%)', '51 cases (35%)'],
+                textposition: 'outside',
+                textfont: { color: '#e0e0e0', size: 14 },
+                hovertemplate: '<b>%{x}</b><br>Cases: %{y}<extra></extra>'
+            }];
+            
+            const layout = {
+                paper_bgcolor: 'rgba(15,15,25,1)',
+                plot_bgcolor: 'rgba(15,15,25,1)',
+                font: { color: '#8892b0', family: 'Segoe UI' },
+                xaxis: {
+                    title: { text: 'Tumor Classification', font: { size: 14, color: '#00d4ff' } },
+                    gridcolor: 'rgba(255,255,255,0.03)',
+                    color: '#00d4ff',
+                    tickfont: { color: '#e0e0e0', size: 13 }
+                },
+                yaxis: {
+                    title: { text: 'Number of Cases', font: { size: 14, color: '#7b2cbf' } },
+                    gridcolor: 'rgba(0,212,255,0.08)',
+                    color: '#7b2cbf',
+                    tickfont: { color: '#e0e0e0', size: 12 },
+                    range: [0, 110]
+                },
+                margin: { l: 70, r: 30, t: 50, b: 70 },
+                title: {
+                    text: 'Cases by Tumor Type',
+                    font: { color: '#00d4ff', size: 16 },
+                    y: 0.95
+                },
+                bargap: 0.4
+            };
+            
+            Plotly.newPlot('distributionChart', data, layout, {responsive: true});
+        }
+    </script>
+</body>
+</html>
